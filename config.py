@@ -12,12 +12,13 @@ class Config:
     SITE_SLOGAN = '产品列表'
 
     # ---------------- 数据库 ----------------
-    MYSQL_HOST = '127.0.0.1'
-    MYSQL_PORT = 3306
-    MYSQL_USER = 'root'
-    MYSQL_PASSWORD = '123456'
-    MYSQL_DB = 'product_quote'
-    MYSQL_CHARSET = 'utf8mb4'
+    # 敏感项一律从环境变量读取，禁止把口令写死在代码/仓库里
+    MYSQL_HOST = os.environ.get('DB_HOST', '127.0.0.1')
+    MYSQL_PORT = int(os.environ.get('DB_PORT', '3306'))
+    MYSQL_USER = os.environ.get('DB_USER', 'root')
+    MYSQL_PASSWORD = os.environ.get('DB_PASSWORD', '')
+    MYSQL_DB = os.environ.get('DB_NAME', 'product_quote')
+    MYSQL_CHARSET = os.environ.get('DB_CHARSET', 'utf8mb4')
 
     SQLALCHEMY_DATABASE_URI = (
         'mysql+pymysql://{user}:{pwd}@{host}:{port}/{db}?charset={charset}'.format(
