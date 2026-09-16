@@ -46,7 +46,12 @@
         <input type="text" id="unit" class="layui-input" maxlength="20" placeholder="单位"
                value="{{ product.unit if product else '件' }}">
       </div>
-      <div class="layui-form-mid form-tip">计量单位如：件 / 个 / 套 / 箱</div>
+      <div class="layui-form-mid unit-picks" id="unitPicks">
+        <button type="button" class="unit-pick" data-unit="件">件</button>
+        <button type="button" class="unit-pick" data-unit="个">个</button>
+        <button type="button" class="unit-pick" data-unit="套">套</button>
+        <button type="button" class="unit-pick" data-unit="箱">箱</button>
+      </div>
     </div>
 
     <div class="layui-form-item">
@@ -126,6 +131,27 @@
     var form = layui.form;
     var upload = layui.upload;
     form.render();
+
+    // ---------- 计量单位快捷选择 ----------
+    var unitInput = document.getElementById('unit');
+    var unitPicks = document.getElementById('unitPicks');
+    var pickBtns = unitPicks.querySelectorAll('.unit-pick');
+
+    function syncUnitPicks() {
+      var value = unitInput.value.trim();
+      for (var i = 0; i < pickBtns.length; i++) {
+        pickBtns[i].classList.toggle('active', pickBtns[i].getAttribute('data-unit') === value);
+      }
+    }
+
+    unitPicks.addEventListener('click', function (e) {
+      var btn = e.target.closest('.unit-pick');
+      if (!btn) return;
+      unitInput.value = btn.getAttribute('data-unit');
+      syncUnitPicks();
+    });
+    unitInput.addEventListener('input', syncUnitPicks);
+    syncUnitPicks();
 
     // ---------- 产品主图 ----------
     var imageInput = document.getElementById('image');

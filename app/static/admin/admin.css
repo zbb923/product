@@ -293,6 +293,34 @@ a { color: var(--primary); text-decoration: none; }
 .form-wrap { max-width: 720px; }
 .form-tip { color: var(--text-sub); font-size: 12px; margin-top: 4px; }
 .required::before { content: '*'; color: var(--danger); margin-right: 4px; }
+
+/* 计量单位快捷选择按钮 */
+.unit-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 3px 0 0;
+}
+.unit-pick {
+  min-width: 44px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 30px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.unit-pick:hover { border-color: var(--primary); color: var(--primary); }
+.unit-pick.active {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
 .image-picker { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .image-preview {
   width: 96px; height: 96px;
@@ -426,7 +454,14 @@ a { color: var(--primary); text-decoration: none; }
 @media (max-width: 640px) {
   .layui-form-label { width: 82px; padding: 9px 6px; font-size: 13px; }
   .layui-input-block { margin-left: 82px; }
-  .layui-form-item .layui-input-inline { float: none; width: 100% !important; margin: 0 0 8px; }
-  .layui-form-mid.form-tip { float: none; margin-left: 0; }
+  .layui-form-item .layui-input-inline {
+    float: none;
+    width: calc(100% - 82px) !important;
+    margin: 0 0 8px 82px;
+  }
+  .layui-form-mid.form-tip { float: none; margin-left: 82px; }
+  /* 单位按钮单独占一行，与上方输入框左对齐 */
+  .unit-picks { float: none; clear: both; margin-left: 82px; padding: 0 0 6px; }
+  .unit-pick { flex: 1 1 0; min-width: 0; }
   .form-footer .layui-btn { width: 48%; }
 }
