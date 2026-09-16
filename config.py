@@ -9,7 +9,7 @@ class Config:
     # ---------------- 基础 ----------------
     SECRET_KEY = os.environ.get('SECRET_KEY', 'product-quote-2026-change-me-in-production')
     SITE_NAME = '产品报价中心'
-    SITE_SLOGAN = '实时产品报价 · 一手工厂价'
+    SITE_SLOGAN = '产品列表'
 
     # ---------------- 数据库 ----------------
     MYSQL_HOST = '127.0.0.1'
