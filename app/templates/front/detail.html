@@ -1,0 +1,61 @@
+{% extends 'front/layout.html' %}
+{% block title %}{{ product.name }} - {{ site_name }}{% endblock %}
+
+{% block content %}
+<main class="site-main">
+  <div class="detail-wrap">
+    <div class="detail-gallery">
+      {% if product.cover %}
+        <img src="{{ product.cover }}" alt="{{ product.name }}">
+      {% else %}
+        <span class="no-img">暂无图片</span>
+      {% endif %}
+    </div>
+
+    <div class="detail-info">
+      <h1>{{ product.name }}</h1>
+      <div class="detail-price-box">
+        <span class="symbol">￥</span><span class="num">{{ product.price | money }}</span>
+        <span class="unit">/{{ product.unit or '件' }}</span>
+      </div>
+      <div class="detail-meta">
+        <div>产品分类：<b>{{ product.category.name if product.category else '未分类' }}</b></div>
+        <div>规格型号：<b>{{ product.spec or '—' }}</b></div>
+        <div>计量单位：<b>{{ product.unit or '件' }}</b></div>
+        <div>更新时间：<b>{{ product.updated_at | dt('%Y-%m-%d') }}</b></div>
+      </div>
+      <div class="detail-note">
+        以上价格为单位报价（元），批量采购价格可面议。具体价格以双方确认的报价单为准。
+      </div>
+    </div>
+  </div>
+
+  {% if related %}
+  <h2 class="section-title">相关产品</h2>
+  <div class="product-grid">
+    {% for item in related %}
+    <a class="product-card" href="{{ url_for('front.detail', pid=item.id) }}">
+      <div class="product-thumb">
+        {% if item.cover %}
+          <img src="{{ item.cover }}" alt="{{ item.name }}" loading="lazy">
+        {% else %}
+          <span class="no-img">暂无图片</span>
+        {% endif %}
+      </div>
+      <div class="product-body">
+        <div class="product-name">{{ item.name }}</div>
+        <div class="product-price">
+          <span class="symbol">￥</span><span class="num">{{ item.price | money }}</span>
+          <span class="unit">/{{ item.unit or '件' }}</span>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div style="margin-top:22px;">
+    <a class="cat-chip" style="display:inline-block;" href="{{ url_for('front.index') }}">← 返回产品列表</a>
+  </div>
+</main>
+{% endblock %}

@@ -1,0 +1,169 @@
+{% extends 'admin/layout.html' %}
+{% block title %}个人中心{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h2 class="page-title">个人中心</h2>
+</div>
+
+<div class="card">
+  <h3 class="card-title">账号信息</h3>
+  <div class="table-wrap">
+    <table class="layui-table" lay-skin="line" style="margin:0;">
+      <tbody>
+        <tr><td style="width:120px;color:#6b7280;">登录账号</td><td>{{ current_admin.username }}</td></tr>
+        <tr><td style="color:#6b7280;">姓名</td><td>{{ current_admin.real_name or '未填写' }}</td></tr>
+        <tr><td style="color:#6b7280;">角色 / 权限组</td><td>{{ current_admin.role_names() }}</td></tr>
+        <tr>
+          <td style="color:#6b7280;">最后登录</td>
+          <td>{{ current_admin.last_login_at | dt }} {% if current_admin.last_login_ip %}（{{ current_admin.last_login_ip }}）{% endif %}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3 class="card-title">修改资料</h3>
+  <form class="layui-form form-wrap" onsubmit="return false;">
+    <div class="layui-form-item">
+      <label class="layui-form-label">头像</label>
+      <div class="layui-input-block">
+        <div class="image-picker">
+          <div class="image-preview" id="avatarPreview">
+            <span id="avatarEmpty">未设置</span>
+            {% if current_admin.avatar %}
+            <img src="{{ current_admin.avatar }}" id="avatarImg" alt="">
+            {% endif %}
+          </div>
+          <div>
+            <button type="button" class="layui-btn layui-btn-primary layui-btn-sm" id="avatarBtn">
+              <i class="layui-icon layui-icon-upload"></i> 上传头像
+            </button>
+            <div class="form-tip">支持 jpg / png，单张不超过 10MB</div>
+          </div>
+        </div>
+        <input type="hidden" id="avatar" value="{{ current_admin.avatar or '' }}">
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">姓名</label>
+      <div class="layui-input-block">
+        <input type="text" id="realName" class="layui-input" maxlength="50"
+               value="{{ current_admin.real_name or '' }}" placeholder="请输入姓名">
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <div class="layui-input-block">
+        <button type="button" class="layui-btn layui-btn-normal" id="saveProfileBtn">保存资料</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h3 class="card-title">修改密码</h3>
+  <form class="layui-form form-wrap" onsubmit="return false;">
+    <div class="layui-form-item">
+      <label class="layui-form-label">原密码</label>
+      <div class="layui-input-block">
+        <input type="password" id="oldPassword" class="layui-input" autocomplete="current-password" placeholder="请输入原密码">
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">新密码</label>
+      <div class="layui-input-block">
+        <input type="password" id="newPassword" class="layui-input" autocomplete="new-password" placeholder="至少 6 位">
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-form-label">确认新密码</label>
+      <div class="layui-input-block">
+        <input type="password" id="confirmPassword" class="layui-input" autocomplete="new-password" placeholder="请再次输入新密码">
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <div class="layui-input-block">
+        <button type="button" class="layui-btn layui-btn-normal" id="savePwdBtn">修改密码</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  layui.use(['upload', 'form'], function () {
+    layui.form.render();
+    var upload = layui.upload;
+
+    function setAvatar(url) {
+      document.getElementById('avatar').value = url || '';
+      var preview = document.getElementById('avatarPreview');
+      var img = document.getElementById('avatarImg');
+      var empty = document.getElementById('avatarEmpty');
+      if (url) {
+        if (!img) {
+          img = document.createElement('img');
+          img.id = 'avatarImg';
+          preview.insertBefore(img, preview.firstChild);
+        }
+        img.src = url;
+        if (empty) empty.style.display = 'none';
+      } else {
+        if (img) img.parentNode.removeChild(img);
+        if (empty) empty.style.display = 'block';
+      }
+    }
+
+    upload.render({
+      elem: '#avatarBtn',
+      url: '{{ url_for("product.upload_image") }}',
+      field: 'file',
+      headers: { 'X-CSRF-Token': window.CSRF },
+      accept: 'images',
+      acceptMime: 'image/*',
+      size: 10240,
+      done: function (res) {
+        if (res.code === 0) {
+          setAvatar(res.data.src);
+          window.tip('头像上传成功', 1);
+        } else {
+          window.errMsg(res.msg || '上传失败');
+        }
+      },
+      error: function () { window.errMsg('头像上传失败，请重试'); }
+    });
+
+    document.getElementById('saveProfileBtn').addEventListener('click', function () {
+      window.post('{{ url_for("admin.profile_update") }}', {
+        real_name: document.getElementById('realName').value.trim(),
+        avatar: document.getElementById('avatar').value
+      }).then(function (res) {
+        window.handleRes(res, function () {
+          setTimeout(function () { window.location.reload(); }, 700);
+        });
+      });
+    });
+
+    document.getElementById('savePwdBtn').addEventListener('click', function () {
+      var oldPwd = document.getElementById('oldPassword').value;
+      var newPwd = document.getElementById('newPassword').value;
+      var confirmPwd = document.getElementById('confirmPassword').value;
+      if (!oldPwd) { window.errMsg('请输入原密码'); return; }
+      if (newPwd.length < 6) { window.errMsg('新密码长度不能少于 6 位'); return; }
+      if (newPwd !== confirmPwd) { window.errMsg('两次输入的新密码不一致'); return; }
+
+      window.post('{{ url_for("admin.profile_password") }}', {
+        old_password: oldPwd,
+        new_password: newPwd,
+        confirm_password: confirmPwd
+      }).then(function (res) {
+        window.handleRes(res, function (data) {
+          window.location.href = (data && data.redirect) || '/admin/login';
+        });
+      });
+    });
+  });
+</script>
+{% endblock %}

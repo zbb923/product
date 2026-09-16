@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
+  <meta name="description" content="{{ site_name }} - {{ site_slogan }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='front/front.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-brand" href="{{ url_for('front.index') }}">
+      <span class="logo">￥</span>
+      <span class="name">{{ site_name }}</span>
+    </a>
+    <form class="site-search" action="{{ url_for('front.index') }}" method="get">
+      {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
+      <input type="text" name="keyword" placeholder="搜索产品名称 / 规格" value="{{ keyword or '' }}" autocomplete="off">
+      <button type="submit">搜索</button>
+    </form>
+  </div>
+</header>
+
+{% block content %}{% endblock %}
+
+<footer class="site-footer">
+  <div>{{ site_name }} · {{ site_slogan }}</div>
+  <div>本站报价仅供参考，最终价格以下单确认为准</div>
+</footer>
+
+</body>
+</html>

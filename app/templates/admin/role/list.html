@@ -1,0 +1,167 @@
+{% extends 'admin/layout.html' %}
+{% block title %}角色管理{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h2 class="page-title">角色管理</h2>
+  <span class="page-desc">通过角色（权限组）为不同运营分配不同权限</span>
+  <div class="spacer"></div>
+  {% if has_perm('role:add') %}
+  <button type="button" class="layui-btn layui-btn-normal" id="addBtn">
+    <i class="layui-icon layui-icon-add-1"></i> 新增角色
+  </button>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="search-bar">
+    <input type="text" id="keyword" class="layui-input" placeholder="角色名称" autocomplete="off">
+    <button type="button" class="layui-btn layui-btn-normal" id="searchBtn">
+      <i class="layui-icon layui-icon-search"></i> 查询
+    </button>
+    <button type="button" class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+  </div>
+  <div class="table-wrap">
+    <table id="roleTable" lay-filter="roleTable"></table>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  window.PERM = {
+    add: {{ 'true' if has_perm('role:add') else 'false' }},
+    edit: {{ 'true' if has_perm('role:edit') else 'false' }},
+    del: {{ 'true' if has_perm('role:delete') else 'false' }}
+  };
+
+  layui.use(['table'], function () {
+    var table = layui.table;
+    var $ = layui.$;
+    var PERM = window.PERM;
+
+    var tableIns = table.render({
+      elem: '#roleTable',
+      id: 'roleTable',
+      url: '{{ url_for("system.role_data") }}',
+      method: 'get',
+      page: true,
+      limit: 15,
+      limits: [15, 30, 50],
+      text: { none: '暂无角色数据' },
+      cols: [[
+        { field: 'id', title: 'ID', width: 66, align: 'center' },
+        {
+          field: 'name', title: '角色名称', width: 180,
+          templet: function (d) {
+            return window.esc(d.name) + (d.is_super ? ' <span class="tag tag-super">超管</span>' : '');
+          }
+        },
+        { field: 'description', title: '描述', minWidth: 180 },
+        { field: 'perm_count', title: '权限数', width: 88, align: 'center' },
+        { field: 'user_count', title: '管理员数', width: 96, align: 'center' },
+        {
+          field: 'status', title: '状态', width: 92, align: 'center',
+          templet: function (d) {
+            if (d.is_super) return '<span class="tag tag-on">启用</span>';
+            return d.status == 1
+              ? '<span class="tag tag-on">启用</span>'
+              : '<span class="tag tag-off">禁用</span>';
+          }
+        },
+        { field: 'created_at', title: '创建时间', width: 150 },
+        {
+          title: '操作', width: 230, align: 'center',
+          templet: function (d) {
+            var html = [];
+            if (PERM.edit && !d.is_super) {
+              html.push('<a class="layui-btn layui-btn-xs js-edit" data-id="' + d.id + '">编辑</a>');
+              html.push('<a class="layui-btn layui-btn-xs layui-btn-normal js-perm" data-id="' + d.id + '">配置权限</a>');
+            }
+            if (PERM.del && !d.is_super) {
+              html.push('<a class="layui-btn layui-btn-xs layui-btn-danger js-del" data-id="' + d.id
+                + '" data-name="' + window.esc(d.name) + '">删除</a>');
+            }
+            return html.length ? html.join(' ')
+              : '<span class="tag tag-super">默认全部权限</span>';
+          }
+        }
+      ]]
+    });
+
+    function formHtml(d) {
+      d = d || {};
+      return '<div class="mf">'
+        + '<div class="mf-item"><label class="mf-label req">角色名称</label>'
+        + '<input type="text" class="layui-input" id="mf_name" maxlength="50" placeholder="如：运营 / 客服" value="' + window.esc(d.name || '') + '"></div>'
+        + '<div class="mf-item"><label class="mf-label">角色描述</label>'
+        + '<textarea class="layui-textarea" id="mf_desc" maxlength="255" placeholder="选填">' + window.esc(d.description || '') + '</textarea></div>'
+        + '<div class="mf-item"><label class="mf-label">状态</label>'
+        + '<select class="native-select" id="mf_status">'
+        + '<option value="1"' + (d.status == 0 ? '' : ' selected') + '>启用</option>'
+        + '<option value="0"' + (d.status == 0 ? ' selected' : '') + '>禁用</option>'
+        + '</select><div class="mf-tip">禁用后，该角色下的管理员将不再拥有对应权限</div></div></div>';
+    }
+
+    function openForm(row) {
+      var isEdit = !!(row && row.id);
+      window.layer.open({
+        type: 1,
+        title: isEdit ? '编辑角色' : '新增角色',
+        area: ['520px', 'auto'],
+        content: formHtml(row || {}),
+        btn: ['保存', '取消'],
+        yes: function (index, layero) {
+          var name = $.trim(layero.find('#mf_name').val());
+          if (!name) { window.errMsg('请填写角色名称'); return; }
+          var url = isEdit ? '/admin/role/edit/' + row.id : '{{ url_for("system.role_add") }}';
+          window.post(url, {
+            name: name,
+            description: $.trim(layero.find('#mf_desc').val()),
+            status: layero.find('#mf_status').val() || '1'
+          }).then(function (res) {
+            window.handleRes(res, function () {
+              window.layer.close(index);
+              tableIns.reload();
+            });
+          });
+        }
+      });
+    }
+
+    if (PERM.add) $('#addBtn').on('click', function () { openForm(null); });
+
+    $(document).on('click', '.js-edit', function () {
+      var id = $(this).data('id');
+      var cache = table.cache['roleTable'] || [];
+      var row = null;
+      for (var i = 0; i < cache.length; i++) { if (cache[i].id == id) { row = cache[i]; break; } }
+      openForm(row || { id: id });
+    });
+
+    $(document).on('click', '.js-perm', function () {
+      window.location.href = '/admin/role/permission/' + $(this).data('id');
+    });
+
+    $(document).on('click', '.js-del', function () {
+      var id = $(this).data('id');
+      var name = $(this).data('name');
+      window.layer.confirm('确定要删除角色「' + name + '」吗？', {
+        icon: 3, title: '删除确认', btn: ['确定删除', '取消']
+      }, function (index) {
+        window.layer.close(index);
+        window.post('/admin/role/delete/' + id, {}).then(function (res) {
+          window.handleRes(res, function () { tableIns.reload(); });
+        });
+      });
+    });
+
+    function reload() {
+      table.reload('roleTable', { where: { keyword: $('#keyword').val().trim() }, page: { curr: 1 } });
+    }
+    $('#searchBtn').on('click', reload);
+    $('#keyword').on('keydown', function (e) { if (e.key === 'Enter') reload(); });
+    $('#resetBtn').on('click', function () { $('#keyword').val(''); reload(); });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends 'front/layout.html' %}
+{% block title %}{% if keyword %}{{ keyword }} - 搜索{% elif current_category %}{% for c in categories %}{% if c.id == current_category %}{{ c.name }} - {% endif %}{% endfor %}报价{% else %}{{ site_name }}{% endif %}{% endblock %}
+
+{% block content %}
+<section class="site-hero">
+  <div class="site-hero-inner">
+    <h1>{{ site_name }}</h1>
+    <p>{{ site_slogan }}</p>
+  </div>
+</section>
+
+<nav class="cat-bar">
+  <div class="cat-bar-inner">
+    <a class="cat-chip {% if not current_category %}active{% endif %}" href="{{ url_for('front.index') }}
+      {%- if keyword %}?keyword={{ keyword | urlencode }}{% endif %}">全部产品</a>
+    {% for c in categories %}
+    <a class="cat-chip {% if current_category == c.id %}active{% endif %}"
+       href="{{ url_for('front.index', category=c.id) }}{% if keyword %}&keyword={{ keyword | urlencode }}{% endif %}">{{ c.name }}</a>
+    {% endfor %}
+  </div>
+</nav>
+
+<main class="site-main">
+  <div class="list-info">
+    <div>
+      共 <b>{{ pagination.total }}</b> 款产品
+      {% if keyword %}，搜索关键词「<span class="kw">{{ keyword }}</span>」{% endif %}
+    </div>
+    {% if keyword or current_category %}
+    <a href="{{ url_for('front.index') }}">清除筛选</a>
+    {% endif %}
+  </div>
+
+  {% if products %}
+  <div class="product-grid">
+    {% for item in products %}
+    <a class="product-card" href="{{ url_for('front.detail', pid=item.id) }}">
+      <div class="product-thumb">
+        {% if item.cover %}
+          <img src="{{ item.cover }}" alt="{{ item.name }}" loading="lazy">
+        {% else %}
+          <span class="no-img">暂无图片</span>
+        {% endif %}
+      </div>
+      <div class="product-body">
+        {% if item.category %}<span class="product-cat">{{ item.category.name }}</span>{% endif %}
+        <div class="product-name">{{ item.name }}</div>
+        {% if item.spec %}<div class="product-spec">{{ item.spec }}</div>{% endif %}
+        <div class="product-price">
+          <span class="symbol">￥</span><span class="num">{{ item.price | money }}</span>
+          <span class="unit">/{{ item.unit or '件' }}</span>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if pagination.pages > 1 %}
+  {% set prefix = url_for('front.index') + ('?' + base_query + '&' if base_query else '?') %}
+  <div class="pager">
+    {% if pagination.has_prev %}
+      <a href="{{ prefix }}page={{ pagination.prev_num }}">上一页</a>
+    {% else %}
+      <span class="disabled">上一页</span>
+    {% endif %}
+
+    {% for p in pagination.iter_pages(left_edge=1, left_current=1, right_current=2, right_edge=1) %}
+      {% if p %}
+        {% if p == pagination.page %}
+          <span class="current">{{ p }}</span>
+        {% else %}
+          <a href="{{ prefix }}page={{ p }}">{{ p }}</a>
+        {% endif %}
+      {% else %}
+        <span class="disabled">…</span>
+      {% endif %}
+    {% endfor %}
+
+    {% if pagination.has_next %}
+      <a href="{{ prefix }}page={{ pagination.next_num }}">下一页</a>
+    {% else %}
+      <span class="disabled">下一页</span>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-box">
+    <div class="icon">￥</div>
+    <div>暂无相关产品</div>
+    {% if keyword or current_category %}
+    <div style="margin-top:10px;"><a href="{{ url_for('front.index') }}">查看全部产品</a></div>
+    {% endif %}
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

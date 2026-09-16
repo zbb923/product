@@ -1,0 +1,190 @@
+{% extends 'admin/layout.html' %}
+{% block title %}权限管理{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h2 class="page-title">权限管理</h2>
+  <span class="page-desc">菜单与权限点，供角色授权时勾选</span>
+  <div class="spacer"></div>
+  {% if has_perm('permission:add') %}
+  <button type="button" class="layui-btn layui-btn-normal" id="addBtn">
+    <i class="layui-icon layui-icon-add-1"></i> 新增权限
+  </button>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table id="permTable" lay-filter="permTable"></table>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  window.PERM = {
+    add: {{ 'true' if has_perm('permission:add') else 'false' }},
+    edit: {{ 'true' if has_perm('permission:edit') else 'false' }},
+    del: {{ 'true' if has_perm('permission:delete') else 'false' }}
+  };
+
+  layui.use(['table'], function () {
+    var table = layui.table;
+    var $ = layui.$;
+    var PERM = window.PERM;
+    var parentOptions = null;
+
+    var tableIns = table.render({
+      elem: '#permTable',
+      id: 'permTable',
+      url: '{{ url_for("system.permission_data") }}',
+      method: 'get',
+      page: false,
+      text: { none: '暂无权限数据' },
+      cols: [[
+        { field: 'id', title: 'ID', width: 70, align: 'center' },
+        {
+          field: 'name', title: '权限名称', minWidth: 180,
+          templet: function (d) {
+            return (d.parent_id ? '<span style="color:#c3cad6;">└ </span>' : '') + window.esc(d.name);
+          }
+        },
+        { field: 'parent_name', title: '所属菜单', width: 130 },
+        { field: 'code', title: '权限标识', width: 150 },
+        {
+          field: 'type', title: '类型', width: 90, align: 'center',
+          templet: function (d) {
+            return d.type == 1
+              ? '<span class="tag tag-info">菜单</span>'
+              : '<span class="tag tag-off">权限点</span>';
+          }
+        },
+        { field: 'route', title: '菜单地址', width: 150 },
+        { field: 'icon', title: '图标', width: 150 },
+        { field: 'sort', title: '排序', width: 76, align: 'center' },
+        {
+          field: 'status', title: '状态', width: 88, align: 'center',
+          templet: function (d) {
+            return d.status == 1
+              ? '<span class="tag tag-on">显示</span>'
+              : '<span class="tag tag-off">隐藏</span>';
+          }
+        },
+        {
+          title: '操作', width: 130, align: 'center',
+          templet: function (d) {
+            var html = [];
+            if (PERM.edit) html.push('<a class="layui-btn layui-btn-xs js-edit" data-id="' + d.id + '">编辑</a>');
+            if (PERM.del) html.push('<a class="layui-btn layui-btn-xs layui-btn-danger js-del" data-id="' + d.id + '" data-name="' + window.esc(d.name) + '">删除</a>');
+            return html.length ? html.join(' ') : '<span style="color:#8a93a5;">无权限</span>';
+          }
+        }
+      ]]
+    });
+
+    function loadParentOptions(cb) {
+      if (parentOptions) { cb(parentOptions); return; }
+      window.getJson('{{ url_for("system.permission_options") }}').then(function (res) {
+        if (res.code === 0) {
+          parentOptions = res.data || [];
+          cb(parentOptions);
+        } else {
+          parentOptions = [];
+          cb(parentOptions);
+        }
+      });
+    }
+
+    function formHtml(d, options) {
+      d = d || {};
+      var opts = '<option value="0">顶级菜单</option>';
+      options.forEach(function (o) {
+        opts += '<option value="' + o.id + '"' + (d.parent_id == o.id ? ' selected' : '') + '>' + window.esc(o.name) + '</option>';
+      });
+      return '<div class="mf">'
+        + '<div class="mf-item"><label class="mf-label req">权限名称</label>'
+        + '<input type="text" class="layui-input" id="mf_name" maxlength="50" value="' + window.esc(d.name || '') + '"></div>'
+        + '<div class="mf-item"><label class="mf-label req">权限标识</label>'
+        + '<input type="text" class="layui-input" id="mf_code" maxlength="100" placeholder="如 product:list" value="' + window.esc(d.code || '') + '">'
+        + '<div class="mf-tip">唯一标识，建议「模块:操作」，如 product:add</div></div>'
+        + '<div class="mf-item"><label class="mf-label">类型</label>'
+        + '<select class="native-select" id="mf_type">'
+        + '<option value="1"' + (d.type == 2 ? '' : ' selected') + '>菜单</option>'
+        + '<option value="2"' + (d.type == 2 ? ' selected' : '') + '>权限点</option></select></div>'
+        + '<div class="mf-item"><label class="mf-label">所属菜单</label>'
+        + '<select class="native-select" id="mf_parent">' + opts + '</select></div>'
+        + '<div class="mf-item"><label class="mf-label">菜单地址</label>'
+        + '<input type="text" class="layui-input" id="mf_route" maxlength="100" placeholder="如 /admin/product" value="' + window.esc(d.route || '') + '">'
+        + '<div class="mf-tip">类型为「菜单」时填写</div></div>'
+        + '<div class="mf-item"><label class="mf-label">菜单图标</label>'
+        + '<input type="text" class="layui-input" id="mf_icon" maxlength="50" placeholder="如 layui-icon-app" value="' + window.esc(d.icon || '') + '"></div>'
+        + '<div class="mf-item"><label class="mf-label">排序</label>'
+        + '<input type="number" class="layui-input" id="mf_sort" value="' + (d.sort === undefined ? 0 : d.sort) + '"></div>'
+        + '<div class="mf-item"><label class="mf-label">状态</label>'
+        + '<select class="native-select" id="mf_status">'
+        + '<option value="1"' + (d.status == 0 ? '' : ' selected') + '>显示</option>'
+        + '<option value="0"' + (d.status == 0 ? ' selected' : '') + '>隐藏</option></select></div>'
+        + '</div>';
+    }
+
+    function openForm(row) {
+      var isEdit = !!(row && row.id);
+      loadParentOptions(function (options) {
+        window.layer.open({
+          type: 1,
+          title: isEdit ? '编辑权限' : '新增权限',
+          area: ['560px', 'auto'],
+          content: formHtml(row || {}, options),
+          btn: ['保存', '取消'],
+          yes: function (index, layero) {
+            var name = $.trim(layero.find('#mf_name').val());
+            var code = $.trim(layero.find('#mf_code').val());
+            if (!name) { window.errMsg('请填写权限名称'); return; }
+            if (!code) { window.errMsg('请填写权限标识'); return; }
+
+            var url = isEdit ? '/admin/permission/edit/' + row.id : '{{ url_for("system.permission_add") }}';
+            window.post(url, {
+              name: name,
+              code: code,
+              type: layero.find('#mf_type').val() || '1',
+              parent_id: layero.find('#mf_parent').val() || '0',
+              route: $.trim(layero.find('#mf_route').val()),
+              icon: $.trim(layero.find('#mf_icon').val()),
+              sort: layero.find('#mf_sort').val() || 0,
+              status: layero.find('#mf_status').val() || '1'
+            }).then(function (res) {
+              window.handleRes(res, function () {
+                window.layer.close(index);
+                tableIns.reload();
+              });
+            });
+          }
+        });
+      });
+    }
+
+    if (PERM.add) $('#addBtn').on('click', function () { openForm(null); });
+
+    $(document).on('click', '.js-edit', function () {
+      var id = $(this).data('id');
+      var cache = table.cache['permTable'] || [];
+      var row = null;
+      for (var i = 0; i < cache.length; i++) { if (cache[i].id == id) { row = cache[i]; break; } }
+      openForm(row || { id: id });
+    });
+
+    $(document).on('click', '.js-del', function () {
+      var id = $(this).data('id');
+      var name = $(this).data('name');
+      window.layer.confirm('确定要删除权限「' + name + '」吗？', {
+        icon: 3, title: '删除确认', btn: ['确定删除', '取消']
+      }, function (index) {
+        window.layer.close(index);
+        window.post('/admin/permission/delete/' + id, {}).then(function (res) {
+          window.handleRes(res, function () { tableIns.reload(); });
+        });
+      });
+    });
+  });
+</script>
+{% endblock %}

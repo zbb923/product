@@ -1,0 +1,229 @@
+{% extends 'admin/layout.html' %}
+{% block title %}管理员管理{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h2 class="page-title">管理员管理</h2>
+  <div class="spacer"></div>
+  {% if has_perm('user:add') %}
+  <button type="button" class="layui-btn layui-btn-normal" id="addBtn">
+    <i class="layui-icon layui-icon-add-1"></i> 新增管理员
+  </button>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="search-bar">
+    <input type="text" id="keyword" class="layui-input" placeholder="账号 / 姓名" autocomplete="off">
+    <button type="button" class="layui-btn layui-btn-normal" id="searchBtn">
+      <i class="layui-icon layui-icon-search"></i> 查询
+    </button>
+    <button type="button" class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+  </div>
+  <div class="table-wrap">
+    <table id="userTable" lay-filter="userTable"></table>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  window.PERM = {
+    add: {{ 'true' if has_perm('user:add') else 'false' }},
+    edit: {{ 'true' if has_perm('user:edit') else 'false' }},
+    del: {{ 'true' if has_perm('user:delete') else 'false' }}
+  };
+  window.ALL_ROLES = [
+    {% for r in roles %}{ id: {{ r.id }}, name: {{ r.name | tojson }} }{{ ',' if not loop.last }}{% endfor %}
+  ];
+  window.CURRENT_UID = {{ current_admin.id }};
+
+  layui.use(['table'], function () {
+    var table = layui.table;
+    var $ = layui.$;
+    var PERM = window.PERM;
+
+    var tableIns = table.render({
+      elem: '#userTable',
+      id: 'userTable',
+      url: '{{ url_for("system.user_data") }}',
+      method: 'get',
+      page: true,
+      limit: 15,
+      limits: [15, 30, 50],
+      text: { none: '暂无管理员数据' },
+      cols: [[
+        { field: 'id', title: 'ID', width: 66, align: 'center' },
+        { field: 'username', title: '登录账号', width: 150 },
+        { field: 'real_name', title: '姓名', width: 120 },
+        {
+          field: 'role_names', title: '角色 / 权限组', minWidth: 180,
+          templet: function (d) {
+            var html = '<span class="tag tag-info">' + window.esc(d.role_names) + '</span>';
+            if (d.is_super) html += ' <span class="tag tag-super">超管</span>';
+            return html;
+          }
+        },
+        {
+          field: 'status', title: '状态', width: 92, align: 'center',
+          templet: function (d) {
+            return d.status == 1
+              ? '<span class="tag tag-on">启用</span>'
+              : '<span class="tag tag-off">禁用</span>';
+          }
+        },
+        { field: 'last_login_at', title: '最后登录', width: 150 },
+        { field: 'last_login_ip', title: '登录IP', width: 130 },
+        {
+          title: '操作', width: 220, align: 'center',
+          templet: function (d) {
+            var html = [];
+            if (PERM.edit) {
+              html.push('<a class="layui-btn layui-btn-xs js-edit" data-id="' + d.id + '">编辑</a>');
+              html.push('<a class="layui-btn layui-btn-xs layui-btn-primary js-pwd" data-id="' + d.id
+                + '" data-name="' + window.esc(d.username) + '">重置密码</a>');
+              if (d.id !== window.CURRENT_UID && !d.is_super) {
+                html.push('<a class="layui-btn layui-btn-xs ' + (d.status == 1 ? 'layui-btn-primary' : 'layui-btn-normal')
+                  + ' js-toggle" data-id="' + d.id + '">' + (d.status == 1 ? '禁用' : '启用') + '</a>');
+              }
+            }
+            if (PERM.del && d.id !== window.CURRENT_UID && d.id !== 1) {
+              html.push('<a class="layui-btn layui-btn-xs layui-btn-danger js-del" data-id="' + d.id
+                + '" data-name="' + window.esc(d.username) + '">删除</a>');
+            }
+            return html.length ? html.join(' ') : '<span style="color:#8a93a5;">无权限</span>';
+          }
+        }
+      ]]
+    });
+
+    function rolesHtml(checked, disabled) {
+      var html = '<div class="ck-group">';
+      window.ALL_ROLES.forEach(function (r) {
+        var isChecked = checked.indexOf(r.id) >= 0;
+        html += '<label><input type="checkbox" class="mf_role" value="' + r.id + '"'
+          + (isChecked ? ' checked' : '') + (disabled ? ' disabled' : '') + '> ' + window.esc(r.name) + '</label>';
+      });
+      return html + '</div>';
+    }
+
+    function formHtml(d) {
+      d = d || {};
+      var isEdit = !!d.id;
+      var html = '<div class="mf">';
+      if (!isEdit) {
+        html += '<div class="mf-item"><label class="mf-label req">登录账号</label>'
+          + '<input type="text" class="layui-input" id="mf_username" maxlength="50" placeholder="字母 / 数字 / 下划线" autocomplete="off"></div>';
+      }
+      html += '<div class="mf-item"><label class="mf-label">姓名</label>'
+        + '<input type="text" class="layui-input" id="mf_real_name" maxlength="50" placeholder="选填" value="' + window.esc(d.real_name || '') + '"></div>'
+        + '<div class="mf-item"><label class="mf-label ' + (isEdit ? '' : 'req') + '">' + (isEdit ? '重置密码（留空不修改）' : '登录密码') + '</label>'
+        + '<input type="password" class="layui-input" id="mf_password" placeholder="至少 6 位" autocomplete="new-password"></div>'
+        + '<div class="mf-item"><label class="mf-label req">角色 / 权限组</label>'
+        + rolesHtml(d.role_ids || []) + '</div>';
+
+      if (!isEdit || d.id !== 1) {
+        html += '<div class="mf-item"><label class="mf-label">状态</label>'
+          + '<select class="native-select" id="mf_status">'
+          + '<option value="1"' + (d.status == 0 ? '' : ' selected') + '>启用</option>'
+          + '<option value="0"' + (d.status == 0 ? ' selected' : '') + '>禁用</option>'
+          + '</select></div>';
+      }
+      return html + '</div>';
+    }
+
+    function openForm(row) {
+      var isEdit = !!(row && row.id);
+      window.layer.open({
+        type: 1,
+        title: isEdit ? '编辑管理员' : '新增管理员',
+        area: ['520px', 'auto'],
+        content: formHtml(row || {}),
+        btn: ['保存', '取消'],
+        yes: function (index, layero) {
+          var roleIds = [];
+          layero.find('.mf_role:checked').each(function () { roleIds.push(this.value); });
+          if (!roleIds.length) { window.errMsg('请至少选择一个角色'); return; }
+
+          var data = {
+            real_name: $.trim(layero.find('#mf_real_name').val()),
+            password: layero.find('#mf_password').val() || '',
+            role_ids: roleIds.join(','),
+            status: (layero.find('#mf_status').val()) || '1'
+          };
+
+          if (!isEdit) {
+            data.username = $.trim(layero.find('#mf_username').val());
+            if (!data.username) { window.errMsg('请填写登录账号'); return; }
+            if (data.password.length < 6) { window.errMsg('登录密码长度不能少于 6 位'); return; }
+          } else if (data.password && data.password.length < 6) {
+            window.errMsg('登录密码长度不能少于 6 位');
+            return;
+          }
+
+          var url = isEdit ? '/admin/user/edit/' + row.id : '{{ url_for("system.user_add") }}';
+          window.post(url, data).then(function (res) {
+            window.handleRes(res, function () {
+              window.layer.close(index);
+              tableIns.reload();
+            });
+          });
+        }
+      });
+    }
+
+    if (PERM.add) $('#addBtn').on('click', function () { openForm(null); });
+
+    $(document).on('click', '.js-edit', function () {
+      var id = $(this).data('id');
+      var cache = table.cache['userTable'] || [];
+      var row = null;
+      for (var i = 0; i < cache.length; i++) { if (cache[i].id == id) { row = cache[i]; break; } }
+      openForm(row || { id: id });
+    });
+
+    $(document).on('click', '.js-pwd', function () {
+      var id = $(this).data('id');
+      var name = $(this).data('name');
+      window.layer.prompt({
+        formType: 1, title: '重置「' + name + '」的密码', maxlength: 30,
+        btn: ['确定重置', '取消']
+      }, function (value, index) {
+        if (!value || value.length < 6) { window.errMsg('新密码长度不能少于 6 位'); return; }
+        window.post('/admin/user/resetpwd/' + id, { password: value }).then(function (res) {
+          window.handleRes(res, function () { window.layer.close(index); });
+        });
+      });
+    });
+
+    $(document).on('click', '.js-toggle', function () {
+      var id = $(this).data('id');
+      window.confirmDo('确定要切换该管理员的状态吗？', function () {
+        window.post('/admin/user/toggle/' + id, {}).then(function (res) {
+          window.handleRes(res, function () { tableIns.reload(); });
+        });
+      });
+    });
+
+    $(document).on('click', '.js-del', function () {
+      var id = $(this).data('id');
+      var name = $(this).data('name');
+      window.layer.confirm('确定要删除管理员「' + name + '」吗？', {
+        icon: 3, title: '删除确认', btn: ['确定删除', '取消']
+      }, function (index) {
+        window.layer.close(index);
+        window.post('/admin/user/delete/' + id, {}).then(function (res) {
+          window.handleRes(res, function () { tableIns.reload(); });
+        });
+      });
+    });
+
+    function reload() {
+      table.reload('userTable', { where: { keyword: $('#keyword').val().trim() }, page: { curr: 1 } });
+    }
+    $('#searchBtn').on('click', reload);
+    $('#keyword').on('keydown', function (e) { if (e.key === 'Enter') reload(); });
+    $('#resetBtn').on('click', function () { $('#keyword').val(''); reload(); });
+  });
+</script>
+{% endblock %}

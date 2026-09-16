@@ -1,0 +1,103 @@
+{% extends 'admin/layout.html' %}
+{% block title %}配置角色权限{% endblock %}
+
+{% block head %}
+<style>
+  #permTree { padding: 6px 2px; }
+  .layui-tree-txt { font-size: 14px; }
+  .perm-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+  .perm-toolbar .spacer { flex: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h2 class="page-title">配置权限</h2>
+  <span class="page-desc">角色：{{ role.name }}</span>
+  <div class="spacer"></div>
+  <a class="layui-btn layui-btn-primary" href="{{ url_for('system.role_list') }}">
+    <i class="layui-icon layui-icon-return"></i> 返回列表
+  </a>
+</div>
+
+<div class="card">
+  {% if role.is_super %}
+    <div class="empty">
+      <i class="layui-icon layui-icon-vercode"></i>
+      超级管理员角色默认拥有系统全部权限，无需配置
+    </div>
+  {% else %}
+  <div class="perm-toolbar">
+    <button type="button" class="layui-btn layui-btn-primary layui-btn-sm" id="checkAllBtn">全选</button>
+    <button type="button" class="layui-btn layui-btn-primary layui-btn-sm" id="uncheckAllBtn">全不选</button>
+    <span class="form-tip">勾选父级菜单会自动带上其下的权限点；仅勾选权限点时系统会自动补齐父级菜单</span>
+    <div class="spacer"></div>
+    <button type="button" class="layui-btn layui-btn-normal layui-btn-sm" id="saveBtn">保存权限</button>
+  </div>
+  <div id="permTree"></div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  window.PERM_TREE = {{ perm_tree | tojson }};
+  window.ROLE_ID = {{ role.id }};
+  window.IS_SUPER = {{ 'true' if role.is_super else 'false' }};
+
+  layui.use(['tree', 'layer'], function () {
+    if (window.IS_SUPER) return;
+
+    var tree = layui.tree;
+
+    function flatten(nodes, out) {
+      (nodes || []).forEach(function (n) {
+        out.push(n.id);
+        if (n.children && n.children.length) flatten(n.children, out);
+      });
+      return out;
+    }
+    var ALL_IDS = flatten(window.PERM_TREE, []);
+
+    tree.render({
+      elem: '#permTree',
+      id: 'permTree',
+      data: window.PERM_TREE,
+      showCheckbox: true,
+      showLine: true,
+      onlyIconControl: false
+    });
+
+    document.getElementById('checkAllBtn').addEventListener('click', function () {
+      tree.setChecked('permTree', ALL_IDS);
+    });
+    document.getElementById('uncheckAllBtn').addEventListener('click', function () {
+      tree.setChecked('permTree', []);
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', function () {
+      var checked = tree.getChecked('permTree');
+      var ids = flatten(checked, []);
+      if (!ids.length) {
+        window.layer.confirm('未勾选任何权限，保存后该角色将无任何权限，确定继续吗？', {
+          icon: 3, title: '提示'
+        }, function (index) {
+          window.layer.close(index);
+          submit(ids);
+        });
+        return;
+      }
+      submit(ids);
+    });
+
+    function submit(ids) {
+      window.post('{{ url_for("system.role_permission", rid=role.id) }}', { perm_ids: ids.join(',') })
+        .then(function (res) {
+          window.handleRes(res, function () {
+            setTimeout(function () { window.location.href = '{{ url_for("system.role_list") }}'; }, 700);
+          });
+        });
+    }
+  });
+</script>
+{% endblock %}

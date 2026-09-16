@@ -1,0 +1,81 @@
+{% extends 'admin/layout.html' %}
+{% block title %}操作日志{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h2 class="page-title">操作日志</h2>
+</div>
+
+<div class="card">
+  <div class="search-bar">
+    <input type="text" id="keyword" class="layui-input" placeholder="操作人 / 内容" autocomplete="off">
+    <select id="module" class="native-select">
+      <option value="">全部模块</option>
+      <option value="auth">登录认证</option>
+      <option value="product">产品管理</option>
+      <option value="category">分类管理</option>
+      <option value="user">管理员管理</option>
+      <option value="role">角色管理</option>
+      <option value="permission">权限管理</option>
+      <option value="profile">个人中心</option>
+    </select>
+    <button type="button" class="layui-btn layui-btn-normal" id="searchBtn">
+      <i class="layui-icon layui-icon-search"></i> 查询
+    </button>
+    <button type="button" class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+  </div>
+  <div class="table-wrap">
+    <table id="logTable" lay-filter="logTable"></table>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  layui.use(['table'], function () {
+    var table = layui.table;
+    var $ = layui.$;
+
+    var tableIns = table.render({
+      elem: '#logTable',
+      id: 'logTable',
+      url: '{{ url_for("admin.log_data") }}',
+      method: 'get',
+      page: true,
+      limit: 15,
+      limits: [15, 30, 50],
+      text: { none: '暂无操作日志' },
+      cols: [[
+        { field: 'id', title: 'ID', width: 70, align: 'center' },
+        { field: 'created_at', title: '时间', width: 160 },
+        { field: 'username', title: '操作人', width: 120 },
+        {
+          field: 'module', title: '模块', width: 110,
+          templet: function (d) { return '<span class="tag tag-info">' + window.esc(d.module) + '</span>'; }
+        },
+        { field: 'action', title: '操作', width: 110 },
+        { field: 'content', title: '内容', minWidth: 200 },
+        { field: 'ip', title: 'IP', width: 140 }
+      ]]
+    });
+
+    function reload() {
+      table.reload('logTable', {
+        where: {
+          keyword: $('#keyword').val().trim(),
+          module: $('#module').val()
+        },
+        page: { curr: 1 }
+      });
+    }
+    $('#searchBtn').on('click', reload);
+    $('#keyword').on('keydown', function (e) { if (e.key === 'Enter') reload(); });
+    $('#module').on('change', reload);
+    $('#resetBtn').on('click', function () {
+      $('#keyword').val('');
+      $('#module').val('');
+      reload();
+    });
+  });
+</script>
+{% endblock %}
