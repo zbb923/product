@@ -72,7 +72,7 @@
               <i class="layui-icon layui-icon-upload"></i> 上传图片
             </button>
             <button type="button" class="layui-btn layui-btn-primary layui-btn-sm" id="clearImageBtn">清除</button>
-            <div class="form-tip">支持 jpg / png / gif / webp，单张不超过 10MB</div>
+            <div class="form-tip">支持 jpg / png / gif / webp，单张不超过 10MB；长图、宽图均可，展示时按原比例缩放，不裁剪</div>
           </div>
         </div>
         <input type="hidden" id="image" value="{{ product.image if product else '' }}">
