@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""前台展示：产品列表、产品详情"""
+"""前台展示：产品列表、产品详情、访问验证"""
 from urllib.parse import urlencode
 
-from flask import Blueprint, current_app, jsonify, render_template, request
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
 
 from app import db
 from app.models import Product, ProductCategory
-from app.utils.helpers import json_err
+from app.utils.helpers import is_access_verified, json_err, set_access_verified
 
 front_bp = Blueprint('front', __name__)
 
@@ -139,3 +139,24 @@ def api_product(pid):
             'category_name': item.category.name if item.category else '',
         },
     })
+
+
+@front_bp.route('/access-verify', methods=['GET', 'POST'])
+def access_verify():
+    """访问验证码页面：校验通过后写入 session，有效期由配置控制"""
+    next_url = (request.args.get('next') or request.form.get('next') or '').strip()
+    # 仅允许站内相对路径跳转，防止开放重定向
+    if not next_url or not next_url.startswith('/'):
+        next_url = url_for('front.index')
+
+    if request.method == 'POST':
+        code = (request.form.get('code') or '').strip()
+        if code == current_app.config['ACCESS_CODE']:
+            set_access_verified()
+            return redirect(next_url)
+        return render_template('front/verify.html', error='验证码错误，请重新输入', next=next_url), 400
+
+    # GET：已验证则直接跳回
+    if is_access_verified():
+        return redirect(next_url)
+    return render_template('front/verify.html', error='', next=next_url)

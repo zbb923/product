@@ -6,7 +6,8 @@ from flask import Blueprint, current_app, g, redirect, render_template, request,
 
 from app import db
 from app.models import AdminUser
-from app.utils.helpers import get_client_ip, get_csrf_token, json_err, json_ok, log_action
+from app.utils.helpers import (ACCESS_VERIFY_SESSION_KEY, get_client_ip,
+                                get_csrf_token, json_err, json_ok, log_action)
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/admin')
 
@@ -55,7 +56,10 @@ def login():
     user.last_login_ip = get_client_ip()
     db.session.commit()
 
+    access_verified_at = session.get(ACCESS_VERIFY_SESSION_KEY)
     session.clear()
+    if access_verified_at:
+        session[ACCESS_VERIFY_SESSION_KEY] = access_verified_at
     session['admin_id'] = user.id
     session.permanent = True
     get_csrf_token()
@@ -70,5 +74,8 @@ def login():
 def logout():
     if getattr(g, 'admin', None):
         log_action('auth', 'logout', '退出登录')
+    access_verified_at = session.get(ACCESS_VERIFY_SESSION_KEY)
     session.clear()
+    if access_verified_at:
+        session[ACCESS_VERIFY_SESSION_KEY] = access_verified_at
     return redirect(url_for('auth.login'))

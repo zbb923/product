@@ -42,6 +42,10 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax'
     PERMANENT_SESSION_LIFETIME = 7200               # 会话 2 小时
 
+    # ---------------- 访问验证码 ----------------
+    ACCESS_CODE = 'jqZdSpOql9tootcJC67Jbx7E'
+    ACCESS_VERIFY_MINUTES = 15                      # 访问验证有效期(分钟)
+
     # ---------------- 分页 ----------------
     PAGE_SIZE_ADMIN = 15
     PAGE_SIZE_FRONT = 12

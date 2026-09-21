@@ -4,18 +4,21 @@
 - 统一 JSON 响应
 - 操作日志
 - CSRF 防护
+- 访问验证码校验
 - 模板全局变量（当前登录人、权限集合、侧边菜单）
 """
 import secrets
+import time
 from datetime import datetime
 from decimal import Decimal
 
-from flask import g, jsonify, request, session
+from flask import current_app, g, jsonify, redirect, request, session, url_for
 
 from app import db
 
 SAFE_METHODS = ('GET', 'HEAD', 'OPTIONS', 'TRACE')
 CSRF_SESSION_KEY = '_csrf_token'
+ACCESS_VERIFY_SESSION_KEY = 'access_verified_at'
 
 
 # ==================== 响应 ====================
@@ -62,6 +65,31 @@ def _check_csrf():
     token = session.get(CSRF_SESSION_KEY)
     sent = request.headers.get('X-CSRF-Token') or request.form.get('_csrf') or ''
     return bool(token) and secrets.compare_digest(str(token), str(sent))
+
+
+# ==================== 访问验证码 ====================
+
+def is_access_verified():
+    """检查 session 中的访问验证是否在有效期内"""
+    ts = session.get(ACCESS_VERIFY_SESSION_KEY)
+    if not ts:
+        return False
+    minutes = current_app.config.get('ACCESS_VERIFY_MINUTES', 15)
+    return (time.time() - ts) < minutes * 60
+
+
+def set_access_verified():
+    """写入访问验证时间戳"""
+    session[ACCESS_VERIFY_SESSION_KEY] = time.time()
+
+
+def _is_exempt_from_access_verify():
+    """静态资源与验证页本身免校验"""
+    if request.path.startswith('/static/'):
+        return True
+    if request.endpoint == 'front.access_verify':
+        return True
+    return False
 
 
 # ==================== 操作日志 ====================
@@ -140,6 +168,11 @@ def register_app(app):
             if is_ajax():
                 return json_err('请求已失效，请刷新页面后重试', code=403), 403
             return '请求已失效，请返回上一页刷新后重试', 403
+        # 访问验证码校验（静态资源与验证页本身跳过）
+        if not _is_exempt_from_access_verify() and not is_access_verified():
+            if is_ajax():
+                return json_err('访问验证已过期，请重新验证', code=403), 403
+            return redirect(url_for('front.access_verify', next=request.full_path))
         # 后台页面禁用缓存，避免退出后回退仍可见
         if request.path.startswith('/admin'):
             g.no_cache = True
