@@ -154,6 +154,21 @@ a { color: var(--primary); text-decoration: none; }
   padding: calc(var(--header-h) + 18px) 18px 28px;
   min-height: 100vh;
 }
+.admin-footer {
+  margin-top: 24px;
+  padding: 16px 0 0;
+  text-align: center;
+  color: var(--text-sub);
+  font-size: 12px;
+  border-top: 1px solid var(--border);
+}
+.admin-footer .beian-link {
+  color: var(--text-sub);
+}
+.admin-footer .beian-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
 .page-head {
   display: flex;
   align-items: center;
@@ -397,6 +412,25 @@ a { color: var(--primary); text-decoration: none; }
   color: var(--text-sub);
   font-size: 12px;
   line-height: 1.9;
+}
+
+/* 登录页底部备案号 */
+.login-beian {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  padding: 12px;
+  color: rgba(255, 255, 255, .7);
+  font-size: 12px;
+}
+.login-beian a {
+  color: rgba(255, 255, 255, .7);
+}
+.login-beian a:hover {
+  color: #fff;
+  text-decoration: underline;
 }
 
 /* ================= 弹层表单（自定义，不依赖 layui 表单渲染） ================= */

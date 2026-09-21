@@ -333,6 +333,14 @@ img { display: block; max-width: 100%; }
   padding: 18px 14px;
   line-height: 1.9;
 }
+.site-footer .beian-link {
+  display: inline-block;
+  color: var(--text-sub);
+}
+.site-footer .beian-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
 
 /* ================= 空状态 ================= */
 .empty-box {
